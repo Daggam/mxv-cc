@@ -9,6 +9,7 @@ void poblar_matriz(int (*m)[M]);
 void poblar_vector(int* v);
 void mostrar_matriz(int (*m)[M]);
 void mostrar_vector(int* v,int dim);
+void multiplicar_vm(int (*m)[M],int* v, int* r);
 
 int main()
 {
@@ -22,15 +23,7 @@ int main()
     mostrar_matriz(m);
     mostrar_vector(v,N);
     
-    for(int i=0;i<M;i++)
-    {
-        int s=0;
-        for(int j=0;j<N;j++)
-        {
-            s+=v[j]*m[j][i];
-        }
-        r[i] = s;
-    }
+    multiplicar_vm(m,v,r);
     
     mostrar_vector(r,M);
     return 0;
@@ -79,4 +72,17 @@ void mostrar_vector(int* v, int dim)
         printf("%d ", v[i]);
     }
     printf("\n");   
+}
+
+void multiplicar_vm(int (*m)[M],int* v, int* r)
+{
+    for(int i=0;i<M;i++)
+    {
+        int s=0;
+        for(int j=0;j<N;j++)
+        {
+            s+=v[j]*m[j][i];
+        }
+        r[i] = s;
+    }
 }
