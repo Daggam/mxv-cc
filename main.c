@@ -4,7 +4,7 @@
 #define N 10
 #define M 5
 #define RAND_N 10
-#define M_DENSITY 1.0
+#define M_DENSITY 0.2
 
 void poblar_matriz(int (*m)[M], double densidad);
 void poblar_vector(int* v);
@@ -12,12 +12,20 @@ void mostrar_matriz(int (*m)[M]);
 void mostrar_vector(int* v,int dim);
 void multiplicar_vm(int (*m)[M],int* v, int* r);
 
+int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j);
+
 int main()
 {
     srand(time(NULL));
     int v[N];
     int m[N][M];
     int r[M];
+
+    int v_com[N*M];// Ver como comprimirlo
+    int vec_i[N];
+    int vec_j[N*M];// Ver como comprimirlo
+    int cant_no_nulos = 0;
+
 
     poblar_matriz(m,M_DENSITY);
     poblar_vector(v);
@@ -27,6 +35,15 @@ int main()
     multiplicar_vm(m,v,r);
     
     mostrar_vector(r,M);
+    
+    cant_no_nulos = comprimir_matriz(m,v_com,vec_i,vec_j);
+    printf("\nVector comprimido: ");
+    mostrar_vector(v_com,cant_no_nulos);
+    printf("\nVector de indices de filas: ");
+    mostrar_vector(vec_i,N);
+    printf("\nVector de indices de columnas: ");
+    mostrar_vector(vec_j,cant_no_nulos);
+
     return 0;
 }
 
@@ -122,4 +139,26 @@ void multiplicar_vm(int (*m)[M],int* v, int* r)
         }
         r[i] = s;
     }
+}
+/*
+    Función para comprimir la matriz en formato Comrpimido por filas CSR.
+*/
+int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j)
+{
+    int cont=0;
+    for(int i=0;i<N;i++)
+    {
+        vec_i[i] = cont;
+        for(int j=0;j<M;j++)
+        {
+            if(m[i][j] != 0)
+            {
+                v_com[cont] = m[i][j];
+                vec_j[cont] = j;
+                cont++;
+            }
+        }
+    }
+
+    return cont;
 }
