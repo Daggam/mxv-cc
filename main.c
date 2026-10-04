@@ -11,7 +11,7 @@ void poblar_vector(int* v);
 void mostrar_matriz(int (*m)[M]);
 void mostrar_vector(int* v,int dim);
 void multiplicar_vm(int (*m)[M],int* v, int* r);
-void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r, int total);
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r);
 
 int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j);
 
@@ -21,11 +21,11 @@ int main()
     int v[N];
     int m[N][M];
     int r[M];
-    int tam_vec=N*M*M_DENSITY+1;//pongo +1 por si queda con decimales, para que no se pierda el ultimo valor
+    int tam_vec=N*M*M_DENSITY;//pongo +1 por si queda con decimales, para que no se pierda el ultimo valor
 
     int v_com[tam_vec];// Ver como comprimirlo
     int vec_i[tam_vec];// Ver como comprimirlo
-    int vec_j[M];
+    int vec_j[M+1];
     int cant_no_nulos = 0;
 
 
@@ -45,7 +45,7 @@ int main()
     mostrar_vector(vec_i,cant_no_nulos);
     printf("\nVector de indices de columnas: ");
     mostrar_vector(vec_j,M);
-    multiplicar_vmc(v_com,vec_i,vec_j,v,r,cant_no_nulos);
+    multiplicar_vmc(v_com,vec_i,vec_j,v,r);
     mostrar_vector(r,M);
 
 
@@ -164,31 +164,22 @@ int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j)
             }
         }
     }
-
+    vec_j[M] = cont; 
     return cont;
 }
 /*
     Función para realizar el producto vector-matriz en formato CSC.
 */
-void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int total)// mando el cant solo para la ultima fila
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r)// mando el cant solo para la ultima fila
 {
     for(int j=0;j<M;j++)
     {
         int s=0;
-        if (j==M-1)// Hago un caso especial para el ultimo elemento, ya que no tengo el vec_i[i+1] para saber hasta donde iterar
+        for(int i=vec_j[j];i<vec_j[j+1];i++)
         {
-            for(int i=vec_j[j];i<total;i++)
-            {
-                s+=v[vec_i[i]]*v_com[i];
-            }
+            s+=v[vec_i[i]]*v_com[i];
         }
-        else
-        {
-            for(int i=vec_j[j];i<vec_j[j+1];i++)
-            {
-                s+=v[vec_i[i]]*v_com[i];
-            }
-        }
+        
         r[j] = s;
     }
 }
