@@ -11,6 +11,7 @@ void poblar_vector(int* v);
 void mostrar_matriz(int (*m)[M]);
 void mostrar_vector(int* v,int dim);
 void multiplicar_vm(int (*m)[M],int* v, int* r);
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r, int total);
 
 int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j);
 
@@ -20,10 +21,11 @@ int main()
     int v[N];
     int m[N][M];
     int r[M];
+    int tam_vec=N*M*M_DENSITY+1;//pongo +1 por si queda con decimales, para que no se pierda el ultimo valor
 
-    int v_com[N*M];// Ver como comprimirlo
-    int vec_i[N];
-    int vec_j[N*M];// Ver como comprimirlo
+    int v_com[tam_vec];// Ver como comprimirlo
+    int vec_i[tam_vec];// Ver como comprimirlo
+    int vec_j[M];
     int cant_no_nulos = 0;
 
 
@@ -39,10 +41,13 @@ int main()
     cant_no_nulos = comprimir_matriz(m,v_com,vec_i,vec_j);
     printf("\nVector comprimido: ");
     mostrar_vector(v_com,cant_no_nulos);
-    printf("\nVector de indices de filas: ");
-    mostrar_vector(vec_i,N);
+    printf("\nVector de indices de comlumnas: ");
+    mostrar_vector(vec_i,cant_no_nulos);
     printf("\nVector de indices de columnas: ");
-    mostrar_vector(vec_j,cant_no_nulos);
+    mostrar_vector(vec_j,M);
+    multiplicar_vmc(v_com,vec_i,vec_j,v,r,cant_no_nulos);
+    mostrar_vector(r,M);
+
 
     return 0;
 }
@@ -130,35 +135,60 @@ void mostrar_vector(int* v, int dim)
 */
 void multiplicar_vm(int (*m)[M],int* v, int* r)
 {
-    for(int i=0;i<M;i++)
+    for(int j=0;j<M;j++)
     {
         int s=0;
-        for(int j=0;j<N;j++)
+        for(int i=0;i<N;i++)
         {
-            s+=v[j]*m[j][i];
+            s+=v[i]*m[i][j];
         }
-        r[i] = s;
+        r[j] = s;
     }
 }
 /*
-    Función para comprimir la matriz en formato Comrpimido por filas CSR.
+    Función para comprimir la matriz en formato Comrpimido por comlumnas CSC.
 */
 int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j)
 {
     int cont=0;
-    for(int i=0;i<N;i++)
+    for(int j=0;j<M;j++)
     {
-        vec_i[i] = cont;
-        for(int j=0;j<M;j++)
+        vec_j[j] = cont;
+        for(int i=0;i<N;i++)
         {
             if(m[i][j] != 0)
             {
                 v_com[cont] = m[i][j];
-                vec_j[cont] = j;
+                vec_i[cont] = i;
                 cont++;
             }
         }
     }
 
     return cont;
+}
+/*
+    Función para realizar el producto vector-matriz en formato CSC.
+*/
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int total)// mando el cant solo para la ultima fila
+{
+    for(int j=0;j<M;j++)
+    {
+        int s=0;
+        if (j==M-1)// Hago un caso especial para el ultimo elemento, ya que no tengo el vec_i[i+1] para saber hasta donde iterar
+        {
+            for(int i=vec_j[j];i<total;i++)
+            {
+                s+=v[vec_i[i]]*v_com[i];
+            }
+        }
+        else
+        {
+            for(int i=vec_j[j];i<vec_j[j+1];i++)
+            {
+                s+=v[vec_i[i]]*v_com[i];
+            }
+        }
+        r[j] = s;
+    }
 }
