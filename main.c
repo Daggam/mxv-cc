@@ -12,67 +12,103 @@ void poblar_vector(int* v);
 void mostrar_matriz(int (*m)[M]);
 void mostrar_vector(int* v,int dim);
 void multiplicar_vm(int (*m)[M],int* v, int* r);
-void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int  lim_a, int lim_b);
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int  cant_col);
 void asignar_columnas( int id_proceso, int n_procesos, int *lim_a, int *lim_b);
-void obtener_desplazamiento(int n_procesos, int *cant_por_columna,int *desp);
+void obtener_desplazamiento(int n_procesos,int *vec_j,int *cant_nn, int *despl_nn, int *cant_col,int *desp_col);
 
 int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j);
 
 int main(int argc, char **argv)
 {
-    //Vectores y matrices iniciales
-    srand(time(NULL));
-    int v[N];
-    int m[N][M];
-    int tam_vec=N*M*M_DENSITY;//pongo +1 por si queda con decimales, para que no se pierda el ultimo valor
-    int r[M];
-    //Matiz comprimida
-    int v_com[tam_vec];// Ver como comprimirlo
-    int vec_i[tam_vec];// Ver como comprimirlo
-    int vec_j[M+1];
-    int cant_no_nulos = 0;
-
-
-    poblar_matriz(m,M_DENSITY);
-    poblar_vector(v);
-    mostrar_matriz(m);
-    mostrar_vector(v,N);
-    
-    // multiplicar_vm(m,v,r);
-    
-    // mostrar_vector(r,M);
-
-    /*Comprimir la matriz*/
-    cant_no_nulos = comprimir_matriz(m,v_com,vec_i,vec_j);
-    printf("\nVector comprimido: ");
-    mostrar_vector(v_com,cant_no_nulos);
-    printf("\nVector de indices de comlumnas: ");
-    mostrar_vector(vec_i,cant_no_nulos);
-    printf("\nVector de indices de columnas: ");
-    mostrar_vector(vec_j,M);
-
-     /*  MPI  */
+    //  MPI  
     int id_proceso, n_procesos,tienpo_inicial,lim_a,lim_b;
 	MPI_Init(&argc, &argv);              
     MPI_Comm_rank(MPI_COMM_WORLD, &id_proceso);  
     MPI_Comm_size(MPI_COMM_WORLD, &n_procesos);     
 
-	// tiempo_inicial = MPI_Wtime();
-
-    asignar_columnas(id_proceso, n_procesos, &lim_a, &lim_b);
-    multiplicar_vmc(v_com,vec_i,vec_j,v,r,lim_a,lim_b);
-    
+    //Vectores y matrices iniciales
+    int *v = malloc(N * sizeof(int));
+    int (*m)[M]=NULL;
+    int tam_vec=N*M*M_DENSITY;
+    int r[M];
     int *r_final = NULL;
-    int *cant_por_columna = NULL;
-    int *desp = NULL;
+
+    //Matiz comprimida
+    int *v_com=NULL;
+    int *vec_i=NULL;
+    int *vec_j=NULL;
+    int cant_nn_total = 0;
+
+    //Vectores para la paralelizacion
+    int *cant_nn = NULL;
+    int *despl_nn = NULL;
+    int *cant_col = NULL;
+    int *desp_col = NULL;
+    
     if(id_proceso==0)
     {
+        m     = malloc(N * M * sizeof(int));
+        v_com = malloc(N * sizeof(int));
+        vec_i = malloc(N * sizeof(int));
+        vec_j = malloc((M + 1) * sizeof(int));
+        srand(time(NULL));
+        
+        //Poblar
+        poblar_matriz(m,M_DENSITY);
+        poblar_vector(v);
+        mostrar_matriz(m);
+        mostrar_vector(v,N);  
+
+
+        //Comprimir la matriz
+        cant_nn_total = comprimir_matriz(m,v_com,vec_i,vec_j);
+        printf("\nVector comprimido: ");
+        mostrar_vector(v_com,cant_nn_total);
+        printf("\nVector de indices de comlumnas: ");
+        mostrar_vector(vec_i,cant_nn_total);
+        printf("\nVector de indices de columnas: ");
+        mostrar_vector(vec_j,M);
+
+        
         r_final = (int*)malloc(M * sizeof(int));
-        cant_por_columna = (int*)malloc(n_procesos * sizeof(int));
-        desp = (int*)malloc(n_procesos * sizeof(int));
-        obtener_desplazamiento(n_procesos, cant_por_columna, desp);
+        cant_nn = (int*)malloc(n_procesos * sizeof(int));
+        despl_nn = (int*)malloc(n_procesos * sizeof(int));
+        cant_col = (int*)malloc(n_procesos * sizeof(int));
+        desp_col = (int*)malloc(n_procesos * sizeof(int));
+        obtener_desplazamiento(n_procesos, vec_j, cant_nn, despl_nn, cant_col, desp_col);
     }
-    MPI_Gatherv(r,lim_b-lim_a,MPI_INT,r_final,cant_por_columna,desp,MPI_INT,0,MPI_COMM_WORLD);
+
+    asignar_columnas(id_proceso, n_procesos, &lim_a, &lim_b);
+
+    int cant_col_local = lim_b -lim_a;
+    int cant_nn_local = 0;
+    MPI_Scatter(cant_nn, 1, MPI_INT, &cant_nn_local, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    MPI_Bcast(v,N,MPI_INT,0,MPI_COMM_WORLD);
+
+    int *v_com_local = (int*)malloc(cant_nn_local * sizeof(int));
+    int *vec_i_local = (int*)malloc(cant_nn_local * sizeof(int));   
+    int *vec_j_local = (int*)malloc((cant_col_local + 1) * sizeof(int));
+
+    MPI_Scatterv(v_com, cant_nn, despl_nn, MPI_INT, v_com_local, cant_nn_local, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(vec_i, cant_nn, despl_nn, MPI_INT, vec_i_local, cant_nn_local, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(vec_j, cant_col, desp_col, MPI_INT, vec_j_local, cant_col_local , MPI_INT, 0, MPI_COMM_WORLD);
+
+    //Reajueste de los indices del vector j 
+    if(cant_col_local>0)
+    {
+        int base = vec_j_local[0];
+        for(int i=0;i<=cant_col_local;i++)
+        {
+            vec_j_local[i] -= base;
+        }
+    }
+    vec_j_local[cant_col_local]=cant_nn_local;
+
+    multiplicar_vmc(v_com_local,vec_i_local,vec_j_local,v,r,cant_col_local);
+
+
+    MPI_Gatherv(r,lim_b-lim_a,MPI_INT,r_final,cant_col,desp_col,MPI_INT,0,MPI_COMM_WORLD);
     /*
     MPI_Gather junta todos los vectores y esta funci[on epsra bloques simetricos por lo que si hay procesos con pasos extra, se les pide un numero extra los ultimos procesos
     Por eso se usa MPI_Gatherv que permite especificar la cantidad de elementos a recibir de cada proceso y el desplazamiento en el vector final.
@@ -99,8 +135,10 @@ int main(int argc, char **argv)
         mostrar_vector(r_final,M);
         
         free(r_final);
-        free(cant_por_columna);
-        free(desp);
+        free(cant_nn);
+        free(despl_nn);
+        free(cant_col);
+        free(desp_col);
     }
     MPI_Finalize();
     return 0;
@@ -224,10 +262,10 @@ int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j)
 /*
     Función para realizar el producto vector-matriz en formato CSC.
 */
-void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int  lim_a, int lim_b)// mando el cant solo para la ultima fila
+void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int  cant_col)// mando el cant solo para la ultima fila
 {
-    int count=0;
-    for(int j=lim_a;j<lim_b;j++)
+
+    for(int j=0;j<cant_col;j++)
     {
         int s=0;
         for(int i=vec_j[j];i<vec_j[j+1];i++)
@@ -235,8 +273,7 @@ void multiplicar_vmc(int* v_com, int* vec_i, int* vec_j, int* v, int* r,int  lim
             s+=v[vec_i[i]]*v_com[i];
         }
         
-        r[count] = s;
-        count++;
+        r[j] = s;
     }
 }
 
@@ -265,13 +302,15 @@ void  asignar_columnas( int id_proceso, int n_procesos, int *lim_a, int *lim_b)
 	}
 }
 
-void obtener_desplazamiento(int n_procesos, int *cant_por_columna, int *desp)
+void obtener_desplazamiento(int n_procesos,int *vec_j,int *cant_nn, int *despl_nn, int *cant_col,int *desp_col)
 {
     int a, b;
     for (int i = 0; i < n_procesos; i++)
     {
         asignar_columnas(i, n_procesos, &a, &b);
-        cant_por_columna[i] = b - a;   // cuántas columnas (resultados) aporta el proceso i
-        desp[i]     = a;       // desde qué posición de r_final empieza
+        cant_nn[i] = vec_j[b] - vec_j[a]; // cuántos elementos no nulos aporta el proceso i
+        despl_nn[i] = vec_j[a];           // desde qué posición de v_com empieza
+        cant_col[i] = b - a;   // cuántas columnas (resultados) aporta el proceso i
+        desp_col[i]     = a;       // desde qué posición de r_final empieza
     }
 }
