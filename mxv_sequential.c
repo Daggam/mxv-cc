@@ -30,12 +30,12 @@ int main(int argc, char **argv)
     double inicio_t = MPI_Wtime(), fin_t;
     poblar_matriz(m);
     fin_t = MPI_Wtime();
-    printf("\nTiempo para poblar la matriz (sequencial): %f\n",fin_t-inicio_t);
+    printf("\nTiempo para poblar la matriz (secuencial): %f\n",fin_t-inicio_t);
     
     inicio_t = MPI_Wtime();
     poblar_vector(v);
     fin_t = MPI_Wtime();
-    printf("\nTiempo para poblar el vector (sequencial): %f\n",fin_t-inicio_t);
+    printf("\nTiempo para poblar el vector (secuencial): %f\n",fin_t-inicio_t);
     
     inicio_t = MPI_Wtime();
     multiplicar_vm(m,v,r);
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     #endif
     MPI_Finalize();
     
-    printf("\nTiempo requerido (sequencial): %f\n",fin_t-inicio_t);
+    printf("\nTiempo requerido (secuencial): %f\n",fin_t-inicio_t);
     
     return 0;
 }
