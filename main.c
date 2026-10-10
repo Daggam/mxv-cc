@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <time.h>
-#define N 10
-#define M 5
-#define RAND_N 10
-#define M_DENSITY 0.2
+
+#if !defined(N) || !defined(M) || !defined(RAND_N) || !defined(M_DENSITY)
+    #error "Debes definir N, M, RAND_N y M_DENSITY"
+#endif
 
 void poblar_matriz(int (*m)[M], double densidad);
 void poblar_vector(int* v);
@@ -21,7 +21,7 @@ int comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, int* vec_j);
 int main(int argc, char **argv)
 {
     //  MPI  
-    int id_proceso, n_procesos,tienpo_inicial,lim_a,lim_b;
+    int id_proceso, n_procesos;
 	MPI_Init(&argc, &argv);              
     MPI_Comm_rank(MPI_COMM_WORLD, &id_proceso);  
     MPI_Comm_size(MPI_COMM_WORLD, &n_procesos);     
@@ -45,13 +45,18 @@ int main(int argc, char **argv)
     int *cant_col = NULL;
     int *desp_col = NULL;
     
+    double tiempo_inicio;
     if(id_proceso==0)
     {
-        m     = malloc(N * M * sizeof(int));
-        v_com = malloc(N * sizeof(int));
-        vec_i = malloc(N * sizeof(int));
+
+        int cap = N*M*M_DENSITY;
+
+        m     = malloc(N * sizeof(*m));
+        v_com = malloc((cap+1) * sizeof(int));
+        vec_i = malloc((cap+1) * sizeof(int));
         vec_j = malloc((M + 1) * sizeof(int));
-        srand(time(NULL));
+
+        srand(58533);
         
         //Poblar
         poblar_matriz(m,M_DENSITY);
@@ -60,6 +65,7 @@ int main(int argc, char **argv)
         mostrar_vector(v,N);  
 
 
+        tiempo_inicio = MPI_Wtime();
         //Comprimir la matriz
         cant_nn_total = comprimir_matriz(m,v_com,vec_i,vec_j);
         printf("\nVector comprimido: ");
@@ -78,11 +84,10 @@ int main(int argc, char **argv)
         obtener_desplazamiento(n_procesos, vec_j, cant_nn, despl_nn, cant_col, desp_col);
     }
 
-    asignar_columnas(id_proceso, n_procesos, &lim_a, &lim_b);
-
-    int cant_col_local = lim_b -lim_a;
+    int cant_col_local = 0;
     int cant_nn_local = 0;
     MPI_Scatter(cant_nn, 1, MPI_INT, &cant_nn_local, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(cant_col, 1, MPI_INT, &cant_col_local, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     MPI_Bcast(v,N,MPI_INT,0,MPI_COMM_WORLD);
 
@@ -107,8 +112,10 @@ int main(int argc, char **argv)
 
     multiplicar_vmc(v_com_local,vec_i_local,vec_j_local,v,r,cant_col_local);
 
-
-    MPI_Gatherv(r,lim_b-lim_a,MPI_INT,r_final,cant_col,desp_col,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Gatherv(r,cant_col_local,MPI_INT,r_final,cant_col,desp_col,MPI_INT,0,MPI_COMM_WORLD);
+    free(v_com_local);
+    free(vec_i_local);
+    free(vec_j_local);
     /*
     MPI_Gather junta todos los vectores y esta funci[on epsra bloques simetricos por lo que si hay procesos con pasos extra, se les pide un numero extra los ultimos procesos
     Por eso se usa MPI_Gatherv que permite especificar la cantidad de elementos a recibir de cada proceso y el desplazamiento en el vector final.
@@ -125,21 +132,30 @@ int main(int argc, char **argv)
     */
     if(id_proceso==0)
     {
+        
+        //Resultado
+        double tiempo_fin = MPI_Wtime();
+
+        double tmseq_inicio = MPI_Wtime(), tmseq_fin;
         //Para comparar resultados
         int r[M];
         multiplicar_vm(m,v,r);
+        tmseq_fin = MPI_Wtime();
         mostrar_vector(r,M);
 
-        //Resultaod
         printf("\nVector resultado final: ");
         mostrar_vector(r_final,M);
-        
+        printf("Tiempo paralelizado: %f\n",tiempo_fin-tiempo_inicio);
+        printf("Tiempo secuencial: %f\n",tmseq_fin-tmseq_inicio);
+
         free(r_final);
         free(cant_nn);
         free(despl_nn);
         free(cant_col);
         free(desp_col);
     }
+    free(v);
+
     MPI_Finalize();
     return 0;
 }
