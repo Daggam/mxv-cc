@@ -61,20 +61,22 @@ int main(int argc, char **argv)
         //Poblar
         poblar_matriz(m,M_DENSITY);
         poblar_vector(v);
+        /*
         mostrar_matriz(m);
         mostrar_vector(v,N);  
-
+*/
 
         tiempo_inicio = MPI_Wtime();
         //Comprimir la matriz
         cant_nn_total = comprimir_matriz(m,v_com,vec_i,vec_j);
+      /*
         printf("\nVector comprimido: ");
         mostrar_vector(v_com,cant_nn_total);
         printf("\nVector de indices de comlumnas: ");
         mostrar_vector(vec_i,cant_nn_total);
         printf("\nVector de indices de columnas: ");
         mostrar_vector(vec_j,M);
-
+        */
         
         r_final = (int*)malloc(M * sizeof(int));
         cant_nn = (int*)malloc(n_procesos * sizeof(int));
@@ -141,10 +143,12 @@ int main(int argc, char **argv)
         int r[M];
         multiplicar_vm(m,v,r);
         tmseq_fin = MPI_Wtime();
-        mostrar_vector(r,M);
-
-        printf("\nVector resultado final: ");
+        
+        printf("\nVector resultado final (paralelizado): \n");
         mostrar_vector(r_final,M);
+        printf("\nVector resultado final (secuencial): \n");
+        mostrar_vector(r,M);
+        
         printf("Tiempo paralelizado: %f\n",tiempo_fin-tiempo_inicio);
         printf("Tiempo secuencial: %f\n",tmseq_fin-tmseq_inicio);
 
