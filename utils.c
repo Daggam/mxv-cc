@@ -33,6 +33,7 @@ void poblar_matriz(int (*m)[M])
         int *p = (&m[0][0]) + posiciones[i];
         *p = 1 + rand()%(RAND_N-1);
     }
+    free(posiciones);
 }
 
 /*

@@ -4,7 +4,7 @@
 */
 void comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, llint* vec_j)
 {
-    int cont=0;
+    llint cont=0;
     for(int j=0;j<M;j++)
     {
         vec_j[j] = cont;
@@ -49,7 +49,7 @@ void reajustar_indices(llint* v_columnas_local,int cant_col_local,int cant_nn_lo
     if(cant_col_local>0)
     {
         llint base = v_columnas_local[0];
-        for(int i=0;i<=cant_col_local;i++)
+        for(int i=0;i<cant_col_local;i++)
         {
             v_columnas_local[i] -= base;
         }

@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 
         #ifdef DEBUG
             printf("\nVector resultado final (paralelizado): \n\t");
-            mostrar_vector(r);
+            mostrar_vector(r,M);
         #endif
 
         printf("\nTiempo requerido (paralelizado): %f\n",fin_t-inicio_t);
