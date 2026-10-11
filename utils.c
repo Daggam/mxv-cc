@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#define llint long long int
+#include "config.h"
 /*
     Función para poblar la matriz.
     Inicializo todos con 0's y luego con el valor densidad le asigno aleatoriamente los valores.
@@ -75,4 +75,3 @@ void mostrar_vector(int* v, int dim)
     }
     printf("\n");   
 }
-
