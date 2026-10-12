@@ -543,7 +543,7 @@ Las pruebas están agrupadas en 10 secciones:
 | 7 | Variación de la densidad, matriz mediana | 4096², densidades de 0.001 a 0.5 |
 | 8 | Variación de la densidad, matriz grande | 16384², densidades de 0.001 a 0.5 |
 | 9 | Variación de la densidad, matriz muy grande | 32768², densidades de 0.001 a 0.5 |
-| 10 | Variación de `RAND_N` | 8192², densidad 0.3 |
+| 10 | Variación de `RAND_N` | 8192², numeros máximo entre 1 y 100000 |
 
 En las secciones 1 a 6 la densidad es `0.3` y `RAND_N` es `100`. En las secciones 7 a 9 varía solo la densidad (con `RAND_N = 100`), y en la 10 varía solo `RAND_N` (con densidad `0.3`).
 
@@ -651,6 +651,8 @@ En cuanto a los 8 núcleos, usualmente es mejor utilizar 16, pero existen alguna
 - **El reparto equilibra la cantidad de columnas, no la cantidad de no nulos.** Con no nulos distribuidos uniformemente la carga es parecida, pero si se concentran en pocas columnas, algunos procesos trabajarían más. Una alternativa es cortar los bloques de columnas usando `v_columnas` para que cada proceso reciba una cantidad similar de no nulos.
 
 - **Optimización en los casos donde no hay pasos extra.** Nosotros contemplamos el caso donde hay pasos extra, pero si no los hubiese, se podría ahorrar la generación de los arreglos `vdespl_nn` y `vdespl_col`.
+
+- **Cambiar desde donde inicia el tiempo de procesamiento.** Sería interesante para ejecuación en paralelo empezar a contar el tiempo después de comprimir la matriz.
 
 ---
 
