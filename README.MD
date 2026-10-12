@@ -14,27 +14,30 @@ Implementación en C de la multiplicación de un vector por una matriz dispersa 
 6. [Comunicación entre procesos](#6-comunicación-entre-procesos)
 7. [La multiplicación](#7-la-multiplicación)
 8. [Mediciones](#8-mediciones)
-9. [Limitaciones y posibles mejoras](#9-limitaciones-y-posibles-mejoras)
+9. [Conclusiones](#9-conclusiones)
+10. [Limitaciones y posibles mejoras](#10-limitaciones-y-posibles-mejoras)
+11. [Bibliografía](#11-bibliografía)
 
+## Participantes
+
+- **Villa, Benjamín**
+- **Santillán Plasencia, Gonzalo**
 
 ---
 
 ## 1. Introducción
 
-En muchos sistemas de gran escala las matrices tienen un porcentaje muy alto de ceros, las cuales se conocen como **matrices dispersas**. Guardarlas completas desperdicia memoria, y multiplicarlas directamente desperdicia mucho cómputo, porque casi todas las operaciones son del tipo `0 · x` o `0 + x`.
+En muchos sistemas de gran escala aparecen matrices con un porcentaje muy alto de ceros, conocidas como **matrices dispersas**. Guardarlas completas desperdicia memoria, y multiplicarlas directamente desperdicia mucho cómputo, porque casi todas las operaciones son del tipo `0 · x`, que no aportan nada al resultado.
 
-Nuestro objetivo es almacenar únicamente los valores de los **elementos no nulos** y la posición de los mismos,para asi solo utilizar esos elementos al multiplicar.
+Nuestro objetivo es almacenar únicamente los valores de los **elementos no nulos** y su posición, para así utilizar solo esos elementos al multiplicar.
 
 ### Operación que se resuelve
 
 Dada una matriz `A` de `N` filas y `M` columnas, y un vector `v` de dimensión `N`, se calcula el vector `r` de dimensión `M`:
 
-```
-         N-1
-r[j] =    Σ   v[i] · A[i][j]        para j = 0 … M-1
-         i=0
-```
- 
+$$
+r[j] = \sum_{i=0}^{N-1} v[i] \cdot A[i][j] \qquad \text{para } j = 0, \dots, M-1
+$$
 
 Se eligió esta forma porque en el formato CSC los datos de una columna están contiguos: cada elemento de `r` se calcula recorriendo una sola columna.
 
@@ -48,9 +51,7 @@ Se eligió esta forma porque en el formato CSC los datos de una columna están c
 | Comunicación | `MPI_Bcast` para el vector, `MPI_Scatterv` para la matriz comprimida y `MPI_Gatherv` para el resultado. |
 | Cálculo | Cada proceso multiplica solo sus columnas, sobre su porción local de la matriz. |
 
-
-
-## Estructura de archivos del proyecto
+### Estructura de archivos del proyecto
 
 | Archivo | Contenido |
 |---|---|
@@ -59,24 +60,25 @@ Se eligió esta forma porque en el formato CSC los datos de una columna están c
 | `parallel_utils.c` / `parallel_utils.h` | Compresión CSC, multiplicación CSC, reparto de columnas y cálculo de conteos y desplazamientos. |
 | `mxv_parallel.c` | Programa paralelo (MPI). |
 | `mxv_sequential.c` | Programa secuencial de referencia, con la matriz densa. |
-| `Dockerfile`|Conifurarión de un entorno MPI aislado|
-| `makefile`|Automatiza la compilación y la ejecución de ambos programas. |
-| `benchmark.sh`Ejecuta las pruebas de rendimiento y guarda los tiempos en archivos de log para su análisis posterior|
+| `Dockerfile` | Configuración de un entorno aislado con MPI. |
+| `makefile` | Automatiza la compilación y la ejecución de ambos programas. |
+| `benchmark.sh` | Ejecuta las pruebas de rendimiento y guarda los tiempos en archivos de log para su análisis posterior. |
 
 ---
 
-## 2. Construcción y ejecución 
-Los programas pueden compilarse y ejecutarse de tres maneras:
- 
+## 2. Construcción y ejecución
+
+Los programas pueden compilarse y ejecutarse de dos maneras:
+
 1. Con **`make`**, que es la forma más simple si ya se cuenta con MPI.
 2. Con **`mpicc`** de forma manual.
 
-Para ambas opciones  se necesita una implementación de MPI instalada (se puede utilizar el `Dockerfile` para crear una imagén con Open MPI) y un compilador de C. Para la primera opción se necesita además `make`.
+Para ambas opciones se necesita una implementación de MPI instalada (se puede utilizar el `Dockerfile` para crear una imagen con Open MPI) y un compilador de C. Para la primera opción se necesita además `make`.
 
 ### Parámetros
- 
+
 Todos los parámetros se fijan en tiempo de compilación mediante macros del preprocesador (`-D`). El archivo `config.h` produce un error de compilación si falta `N`, `M`, `RAND_N` o `M_DENSITY`. Con `make`, estos mismos nombres son variables que se pueden modificar desde la línea de comandos.
- 
+
 | Parámetro | Significado | Valor por defecto (`make`) |
 |---|---|---|
 | `N` | Cantidad de filas de la matriz y dimensión del vector `v`. | `20` |
@@ -84,147 +86,82 @@ Todos los parámetros se fijan en tiempo de compilación mediante macros del pre
 | `M_DENSITY` | Densidad: fracción de elementos no nulos de la matriz. Varía entre `0.0` y `1.0`. | `0.3` |
 | `RAND_N` | Límite superior (excluido) de los valores aleatorios. Debe ser al menos `2`. | `10` |
 | `CORES` | Cantidad de procesos MPI de la versión paralela. Solo existe en `make`. | `4` |
- 
+
 Con `RAND_N = k`, los elementos del vector `v` toman valores entre `0` y `k - 1`, y los elementos no nulos de la matriz toman valores entre `1` y `k - 1`.
 
+Al trabajar con matrices grandes es necesario agregar el sufijo `LL` a los valores de `N` y `M` (por ejemplo, `N=65536LL`). Esto se debe a que en una parte del código se multiplican entre sí, y el resultado puede desbordar el rango de un `int` (cuando `N · M` supera 2 147 483 647). Con el sufijo `LL` la operación se realiza con el tipo `long long int`.
 
 ### Docker (opcional)
- 
+
 Para quienes no tengan instaladas las dependencias de MPI y solo quieran probar el programa, el proyecto incluye un `Dockerfile` basado en Ubuntu 22.04 con Open MPI, el compilador de C y `make`. Es necesario tener instalado [Docker](https://www.docker.com/products/docker-desktop/).
- 
+
 Desde la carpeta del proyecto, se construye la imagen:
- 
+
 ```bash
 docker build -t mpienv .
 ```
- 
+
 Y luego se inicia el contenedor:
- 
+
 ```bash
 docker run -it mpienv
 ```
- 
+
 En Linux puede ser necesario anteponer `sudo` a ambos comandos.
- 
+
 El primer comando crea la imagen `mpienv`, que copia los archivos del proyecto en el directorio `/app`. El segundo abre una terminal dentro del contenedor, ya ubicada en `/app`, desde donde se puede usar `make` como se explica en la siguiente sección.
- 
+
 Los cambios que se hagan en el código fuente después de construir la imagen no se reflejan dentro del contenedor.
 
 ### Compilación y ejecución con `make`
- 
+
 Para compilar y ejecutar la multiplicación **en paralelo**:
- 
+
 ```bash
 make parallel
 ```
- 
+
 Para la versión **secuencial**:
- 
+
 ```bash
 make sequential
 ```
- 
+
 Ambos objetivos tienen alias: `parallel` también puede invocarse como `pll` o `p`, y `sequential` como `seq` o `s`.
- 
+
 Cada comando compila el programa correspondiente (`mxv_parallel.out` o `mxv_sequential.out`) y lo ejecuta con `mpirun`: la versión paralela con `CORES` procesos y la secuencial con un único proceso. Se usa la opción `--allow-run-as-root` para que funcione dentro del contenedor de Docker, donde se trabaja como usuario root.
- 
+
 Los parámetros de la tabla anterior se modifican al invocar `make`. Por ejemplo, para multiplicar en paralelo, con 8 procesos, un vector de dimensión 1000 por una matriz de 1000 filas y 5000 columnas, con una densidad del 10 % y valores de hasta 10:
- 
+
 ```bash
 make p N=1000 M=5000 M_DENSITY=0.1 RAND_N=11 CORES=8
 ```
- 
+
 > **Nota:** Open MPI no permite lanzar más procesos que núcleos disponibles. Si `CORES` supera esa cantidad, `mpirun` termina con un error. Se puede forzar la ejecución agregando `--oversubscribe` al comando `mpirun` del `makefile`, pero en ese caso los procesos compiten por los núcleos y los tiempos medidos dejan de ser representativos.
 
-
 ### Compilación manual con `mpicc`
- 
-Si no se quiere usar `make`, los programas se compilan y ejecutan directamente con MPI. Donde las macros se definen con `-D`.
- 
+
+Si no se quiere usar `make`, los programas se compilan y ejecutan directamente con MPI. Las macros se definen con `-D`.
+
 Versión paralela:
- 
+
 ```bash
 mpicc -DN=20 -DM=20 -DRAND_N=10 -DM_DENSITY=0.3 \
       mxv_parallel.c utils.c parallel_utils.c -o mxv_parallel.out
 mpirun -np 4 ./mxv_parallel.out
 ```
- 
+
 Versión secuencial:
- 
+
 ```bash
 mpicc -DN=20 -DM=20 -DRAND_N=10 -DM_DENSITY=0.3 \
       mxv_sequential.c utils.c -o mxv_sequential.out
 mpirun -np 1 ./mxv_sequential.out
 ```
- 
+
 Si se trabaja como usuario root (por ejemplo, dentro del contenedor), hay que agregar `--allow-run-as-root` al comando `mpirun`.
- 
+
 Opcionalmente se puede agregar `-DDEBUG` al compilar para imprimir resultados por consola: la versión secuencial muestra el vector `v`, la matriz y el vector resultado, y la paralela solo el vector resultado. Debe usarse únicamente con tamaños pequeños. Esta opción está pensada para la compilación manual, ya que el `makefile` no la incluye.
-
-### Docker
-Creamos un archivo Dockerfile para aquellos usuarios que no tengan instaladas las dependencias de MPI y solo quieran probar la ejecución. 
-Para ello es necesario tener instalado [Docker](https://www.docker.com/products/docker-desktop/).
-
-
-Para construir la imagen de Docker se debe ejecutar el siguiente comando: 
-```bash
-sudo docker build -t mpienv .
-```
-
-Luego para ejecutar el contedor se utliza el siguiente comando:
-```bash
-sudo docker run -it mpienv
-```
-
-Con eso ya tendriamos un entrono con MPI listo para trabajar. 
-
-### Makefile
-
-Una vez ya en nustro entorno con la dependencia de MPI queda construir los programas con `make`. Si contruyo su entorno MPI utilizando el `Dockerfile` este entorno ya cuenta con `make`,caso contrario deberá instalarlo.  
-
-Para ejecutar la multiplicación de vector por matriz en paralelo se debe ejecutar:
-```bash
-make parallel 
-```
-
-Puede usarse `parallel` como `pll` o `p`. Los cuales son alias.
-
-En cambio si se quiere ejecutar la multiplicación de manera secuencial se deberá utilizar:
-```bash
-make sequential 
-```
-
-Tambien es posible usar los alias `seq` o `s`.
-
-La ejecución de ambos tendrán los siguientes parámetros por defecto
-
-
-| Macro | Significado |Valores por defecto |
-|---|---|---|
-| `N` | Cantidad de filas de la matriz y dimensión del vector `v`. | 20 |
-| `M` | Cantidad de columnas de la matriz y dimensión del resultado `r`. | 20 |
-| `M_DENSITY` | Densidad: Indica que parte del total esta formada por  elementos no nulos,caria  entre `0.0` y `1.0`. | 0.3|
-| `RAND_N` | Límite superior abierto para los valores aleatorios. |100 |
-
-Por ejemplo:si quisiera multiplicar de forma paralelizada un vector de dimensión 1000 con una matriz de 1000x5000  cuya densidad sea del 10% y el valor máximo posible de cada elemento sea 10
-```bash
-make p N=1000 M=5000 M_DENSITY=0.1 RAND_N=11 
-```
-
-### MPI
-
-Si no se quiere usar `make` se puede compilar y luego ejecutar los programas que realzian la multiplicación en paralelo y/o secuencial. Utilizando `MPI`, teniendo previamente instaladas dichas dependencias.
-
-Para compilar la multiplicación en paralelo:
-```bash
-mpicc mpicc -DN=20 -DM=20 -DRAND_N=10 -DM_DENSITY=0.3 mxv_parallel.c utils.c parallel_utils.c
-```
-Y secuencial:
-```bash
-mpicc -DN=20 -DM=20 -DRAND_N=10 -DM_DENSITY=0.3 mxv_sequential.c utils.c
-```
-Donde se definen las macros del prepocesador necesarias para compilar.Los cuales se fijan al compilar con `-D`.El archivo `config.h` da error si falta N,M,M_DENSITY o RAND_N. Se puede usar opcionalmente DEBUG para ver el vector resultado. 
-
 
 ---
 
@@ -255,8 +192,7 @@ for(llint i=0;i<lim;i++)
 
 El vector `v` se llena con `rand() % RAND_N`, valores entre `0` y `RAND_N - 1`.
 
-Ambas funciones llaman a `srand(58533)` y luego pueblan primero la matriz y después el vector, así que siempre se trabaja con la misma matriz y el mismo vector lo que permite comparar tiempos y resultados.
-
+Ambos programas (`mxv_parallel.c` y `mxv_sequential.c`) llaman a `srand(58533)` y luego pueblan primero la matriz y después el vector, así que siempre se trabaja con la misma matriz y el mismo vector, lo que permite comparar tiempos y resultados.
 
 ---
 
@@ -264,13 +200,13 @@ Ambas funciones llaman a `srand(58533)` y luego pueblan primero la matriz y desp
 
 ### El formato CSC
 
-CSC guarda la matriz **por columnas** usando tres arreglos:
+CSC (*Compressed Sparse Column*, en español, columna dispersa comprimida) guarda la matriz **por columnas** usando tres arreglos:
 
 | Arreglo | Tipo | Tamaño | Contenido |
 |---|---|---|---|
-| `v_compresed` | `int` |`cant_nn` | Los valores no nulos, recorrido columna por columna. |
-| `v_filas` | `int` |`cant_nn` | La fila en la que se ubica, cada valor no nulo. |
-| `v_columnas` | `llint` | `M + 1` |Cada elemento indica donde incia la columna `j` en los otros dos vectores. Como mejora para la programación el último elemento es`cant_nn`. |
+| `v_compresed` | `int` | `cant_nn` | Los valores no nulos, recorridos columna por columna. |
+| `v_filas` | `int` | `cant_nn` | La fila en la que se ubica cada valor no nulo. |
+| `v_columnas` | `llint` | `M + 1` | Cada elemento indica dónde inicia la columna `j` en los otros dos arreglos. Como mejora para la programación, el último elemento es `cant_nn`. |
 
 (`cant_nn` es la cantidad total de elementos no nulos.)
 
@@ -333,8 +269,7 @@ void comprimir_matriz(int (*m)[M], int* v_com, int* vec_i, llint* vec_j)
 }
 ```
 
-Se recorre toda la matriz densa una vez, por lo que el costo es `O(N·M)`. Solo se realiza una única ves por el proceso root. Después de comprimir, la matriz densa se la libera (`free(m)`) y solo se trabaja con los tres arreglos.
-
+Se recorre toda la matriz densa una vez, por lo que el costo es `O(N·M)`. Esto se realiza una sola vez, en el proceso root. Después de comprimir, la matriz densa se libera (`free(m)`) y solo se trabaja con los tres arreglos.
 
 ---
 
@@ -342,10 +277,10 @@ Se recorre toda la matriz densa una vez, por lo que el costo es `O(N·M)`. Solo 
 
 ### Por qué por columnas
 
-Cada elemento `r[j]` depende **solo de la columna `j`** de la matriz y del vector `v`. Si cada proceso se queda con un conjunto de columnas :
+Cada elemento `r[j]` depende **solo de la columna `j`** de la matriz y del vector `v`. Si cada proceso se queda con un conjunto de columnas:
 
 - Cada uno calcula por sí solo los elementos de `r` que le corresponden.
-- En el formato CSC ya almacena las columnas de forma contigua, así que el bloque de un proceso es un tramo continuo de `v_compresed` y `v_filas`.
+- Como el formato CSC almacena las columnas de forma contigua, el bloque de un proceso es un tramo continuo de `v_compresed` y `v_filas`.
 
 ### Reparto en bloques contiguos
 
@@ -361,18 +296,18 @@ Si `M` no es divisible por la cantidad de procesos, los primeros `pasos_extra` p
 - Procesos con `id < pasos_extra`: reciben `cant_pasos + 1` columnas.
 - Procesos con `id >= pasos_extra`: reciben `cant_pasos` columnas.
 
-El proceso root llama a `asignar_columnas` con el `id` de cada uno de los procesos determinando el bloque de columnas que deberá trabajar cada uno.
+El proceso root llama a `asignar_columnas` con el `id` de cada uno de los procesos y así determina el bloque de columnas que deberá trabajar cada uno.
 
-Si se da el caso donde hay **más procesos que columnas**, los procesos sobrantes reciben `0` columnas y simplemente no trabajan.
+Si hay **más procesos que columnas**, los procesos sobrantes reciben `0` columnas y simplemente no trabajan.
 
-### Ejemplo:  5 columnas y 3 procesos
+### Ejemplo: 5 columnas y 3 procesos
 
-Utilizando estos parámetros obtnemos que:
+Con estos parámetros se obtiene:
 
-- `cant_pasos = 5 / 3 = 1` 
+- `cant_pasos = 5 / 3 = 1`
 - `pasos_extra = 5 % 3 = 2`
 
-Por lo tanto los procesos 0 y 1 deberán recibir  2 columnas y el proceso 2 recibira 1.
+Por lo tanto, los procesos 0 y 1 deberán recibir 2 columnas y el proceso 2 recibirá 1.
 
 | Proceso | Columnas `[lim_a, lim_b)` | Cantidad |
 |---|---|---|
@@ -380,11 +315,9 @@ Por lo tanto los procesos 0 y 1 deberán recibir  2 columnas y el proceso 2 reci
 | 1 | `[2, 4)` → c2, c3 | 2 |
 | 2 | `[4, 5)` → c4 | 1 |
 
-
-
 ### Conteos y desplazamientos
 
-`MPI_Scatterv` y `MPI_Gatherv` necesitan saber, para cada uno de los procesos, cuántos elementos mueve y desde qué posición. El proceso 0 calcula cuatro arreglos de tamaño `n_procesos` con `obtener_vector_cantidad_desplazamiento`, invocando a `asignar_columnas` para cada proceso `i`:
+`MPI_Scatterv` y `MPI_Gatherv` necesitan saber, para cada uno de los procesos, cuántos elementos mueven y desde qué posición. El proceso 0 calcula cuatro arreglos de tamaño `n_procesos` con `obtener_vector_cantidad_desplazamiento`, invocando a `asignar_columnas` para cada proceso `i`:
 
 ```c
 vcant_nn[i]  = v_columnas[b] - v_columnas[a];  // cuántos no nulos aporta el proceso i
@@ -408,13 +341,13 @@ Con la matriz de ejemplo (`v_columnas = [0, 2, 4, 5, 7, 8]`) y 3 procesos:
 | 1 | 2 | 2 | `v_columnas[4] − v_columnas[2] = 3` | 4 |
 | 2 | 1 | 4 | `v_columnas[5] − v_columnas[4] = 1` | 7 |
 
-Fíjese que `vcant_col` y `vdespl_col` dependen solo de `asignar_columnas`, mientras que `vcant_nn` y `vdespl_nn` dependen además de `v_columnas`, porque la cantidad de no nulos varía de una columna a otra.
+Observe que `vcant_col` y `vdespl_col` dependen solo de `asignar_columnas`, mientras que `vcant_nn` y `vdespl_nn` dependen además de `v_columnas`, porque la cantidad de no nulos varía de una columna a otra.
 
 ---
 
 ## 6. Comunicación entre procesos
 
-Solo el proceso 0 tiene los datos completos (matriz comprimida y vector). Se usan **operaciones de comunicación** para repartirlos y para juntar el resultado; el proceso 0 también participa del cálculo con su propio bloque.
+Solo el proceso 0 tiene los datos completos (matriz comprimida y vector). Se usan **operaciones de comunicación colectivas** para repartirlos y para juntar el resultado; el proceso 0 también participa del cálculo con su propio bloque.
 
 ### Secuencia completa
 
@@ -438,11 +371,11 @@ Cada proceso necesita saber cuánta memoria reservar **antes** de recibir sus da
 MPI_Bcast(v, N, MPI_INT, 0, MPI_COMM_WORLD);
 ```
 
-Todos los procesos reciben una copia completa de `v`. Ya que es neceario porque **todos necesitan los mismos datos**: el acceso `v[v_filas[i]]` puede tocar cualquier posición de `v`.
+Todos los procesos reciben una copia completa de `v`. Esto es necesario porque **todos necesitan los mismos datos**: el acceso `v[v_filas[i]]` puede tocar cualquier posición de `v`.
 
 ### `MPI_Scatterv`: la matriz comprimida (pasos 4, 5 y 6)
 
-A diferencia de `MPI_Scatter`, donde todos reciben la misma cantidad, `MPI_Scatterv` permite que **cada proceso reciba una cantidad distinta**, indicada por un arreglo de conteos y otro de desplazamientos. Es necesario porque tanto la cantidad de columnas como la de no nulos puede variar por proceso.
+A diferencia de `MPI_Scatter`, donde todos reciben la misma cantidad, `MPI_Scatterv` permite que **cada proceso reciba una cantidad distinta**, indicada por un arreglo de conteos y otro de desplazamientos. Es necesario porque tanto la cantidad de columnas como la de no nulos pueden variar por proceso.
 
 ```c
 MPI_Scatterv(v_compresed, vcant_nn, vdespl_nn, MPI_INT,
@@ -456,12 +389,11 @@ MPI_Scatterv(v_columnas,  vcant_col, vdespl_col, MPI_LONG_LONG_INT,
 - `v_compresed` y `v_filas` tienen un elemento por no nulo, así que usan `vcant_nn` y `vdespl_nn`.
 - `v_columnas` tiene un elemento por columna, así que usa `vcant_col` y `vdespl_col`. Como es de tipo `llint`, se envía con `MPI_LONG_LONG_INT`.
 
-Cada proceso recibe **solamente sus columnas**: la memoria local es aproximadamente `cant_nn / p` en lugar de enviar el vector completo que sería de tamaño `cant_nn`.
-
+Cada proceso recibe **solamente sus columnas**: la memoria local es aproximadamente `cant_nn / p`, en lugar de `cant_nn` si se enviaran a cada proceso los arreglos completos.
 
 ### Reajuste de los índices locales
 
-El arreglo `v_columnas` global tiene posiciones relativas a `v_compresed` y `v_filas` erstnado **completos**, pero cada proceso solo tiene un trozo. La función `reajustar_indices` los convierte en posiciones locales:
+El arreglo `v_columnas` global tiene posiciones relativas a `v_compresed` y `v_filas` **completos**, pero cada proceso solo tiene un trozo de ellos. La función `reajustar_indices` los convierte en posiciones locales:
 
 ```c
 void reajustar_indices(llint* v_columnas_local, int cant_col_local, int cant_nn_local)
@@ -495,7 +427,7 @@ MPI_Gatherv(r_local, cant_col_local, MPI_INT,
 
 Cada proceso envía sus `cant_col_local` resultados y el proceso 0 los coloca en `r` según `vcant_col` (cuántos recibe de cada uno) y `vdespl_col` (en qué posición de `r` los escribe). Como cada columna produce exactamente un elemento de `r`, **se reutilizan los mismos arreglos** que se usaron para repartir `v_columnas`.
 
-`MPI_Gather` no serviría aquí porque exige que todos los procesos aporten la misma cantidad, y con `M`puede no ser divisible por la cantidad de procesos, los bloques serían de tamaños distintos.
+`MPI_Gather` no serviría aquí porque exige que todos los procesos aporten la misma cantidad, y como `M` puede no ser divisible por la cantidad de procesos, los bloques serían de tamaños distintos.
 
 En los procesos que no son el 0, los argumentos `r`, `vcant_col` y `vdespl_col` valen `NULL`, porque `MPI_Gatherv` (y `MPI_Scatterv`) solo los leen en el proceso raíz.
 
@@ -581,25 +513,25 @@ que coincide con el producto con la matriz densa.
 
 Los tiempos de poblar la matriz y el vector se miden y se muestran aparte en ambos programas.
 
-Esta diferencia hay que tenerla en cuenta al comparar. Para tamaños chicos el tiempo del programa paralelo está dominado por la compresión y la comunicación, no por el cálculo. La multiplicación hace una sola operación por dato, por lo que está limitada por memoria y comunicación y no por cómputo. El beneficio de paralelizar aparece cuando la matriz es grande, o cuando la matriz distribuida se reutiliza en muchas multiplicaciones (por ejemplo, en métodos iterativos), de modo que el costo de repartirla se amortiza.
+Esta diferencia hay que tenerla en cuenta al comparar. Para tamaños chicos, el tiempo del programa paralelo está dominado por la compresión y la comunicación, no por el cálculo. La multiplicación hace una sola operación por dato, por lo que está limitada por memoria y comunicación y no por cómputo. El beneficio de paralelizar aparece cuando la matriz es grande, o cuando la matriz distribuida se reutiliza en muchas multiplicaciones (por ejemplo, en métodos iterativos), de modo que el costo de repartirla se amortiza.
 
 ### Pruebas de rendimiento (`benchmark.sh`)
- 
+
 El script `benchmark.sh` automatiza una serie de mediciones. Para cada combinación de parámetros invoca a `make` (por lo que debe ejecutarse desde la carpeta del proyecto) y registra los tiempos obtenidos en archivos de log. Cada configuración se repite 10 veces (`REPETITIONS`), y la versión paralela se prueba con 1, 8, 16, 64 y 128 procesos (`CORES_VALUES`). Ambos valores pueden modificarse al comienzo del script.
- 
+
 Uso (la primera vez hay que darle permisos de ejecución con `chmod +x benchmark.sh`):
- 
+
 ```bash
 ./benchmark.sh                    # versión secuencial y paralela, todas las secciones
 ./benchmark.sh parallel           # solo la versión paralela
 ./benchmark.sh sequential         # solo la versión secuencial
 ./benchmark.sh parallel 3         # solo la versión paralela, solo la sección 3
 ```
- 
+
 El número de sección también puede indicarse con una variable de entorno: `SECTION=3 ./benchmark.sh parallel`.
- 
+
 Las pruebas están agrupadas en 10 secciones:
- 
+
 | Sección | Qué se evalúa | Tamaños (`N × M`) |
 |---|---|---|
 | 1 | Matrices pequeñas | de 128 × 128 a 4096 × 4096 |
@@ -612,39 +544,122 @@ Las pruebas están agrupadas en 10 secciones:
 | 8 | Variación de la densidad, matriz grande | 16384², densidades de 0.001 a 0.5 |
 | 9 | Variación de la densidad, matriz muy grande | 32768², densidades de 0.001 a 0.5 |
 | 10 | Variación de `RAND_N` | 8192², densidad 0.3 |
- 
-Salvo en las secciones 7 a 9 y en la 10, la densidad es `0.3` y `RAND_N` es `100`.
- 
+
+En las secciones 1 a 6 la densidad es `0.3` y `RAND_N` es `100`. En las secciones 7 a 9 varía solo la densidad (con `RAND_N = 100`), y en la 10 varía solo `RAND_N` (con densidad `0.3`).
+
 #### Resultados
- 
+
 Los tiempos se guardan en dos archivos, que se **sobrescriben** en cada ejecución del script:
- 
+
 - `resultados_secuencial.log`
 - `resultados_paralelo.log`
+
 Cada medición es una línea con el formato:
- 
+
 ```
 RESULT,N=...,M=...,DENSITY=...,RAND_N=...,CORES=...,TIME_PROC=...,TIME_PM=...,TIME_PV=...
 ```
- 
+
 | Campo | Significado |
 |---|---|
 | `N`, `M`, `DENSITY`, `RAND_N`, `CORES` | Parámetros de la ejecución. |
-| `TIME_PROC` | "Tiempo requerido" de la multiplicación (ver la sección [Mediciones](#8-mediciones)). |
+| `TIME_PROC` | "Tiempo requerido" de la multiplicación (ver [Qué mide cada tiempo](#qué-mide-cada-tiempo)). |
 | `TIME_PM` | Tiempo para poblar la matriz. |
 | `TIME_PV` | Tiempo para poblar el vector. |
- 
+
 > **Advertencias:**
 > - Las configuraciones más grandes necesitan mucha memoria RAM en el proceso 0. Por ejemplo, con 32768 × 32768 la matriz densa ocupa unos 4,3 GB y el arreglo auxiliar de la población otros 8,6 GB, es decir, cerca de 13 GB en total.
 > - La cantidad total de ejecuciones es grande (cada configuración se repite 10 veces con varias cantidades de procesos), por lo que el script puede tardar mucho.
-> - Valen las mismas consideraciones sobre la cantidad de núcleos que en la sección 2.2: con 64 o 128 procesos, la máquina debe disponer de esa cantidad de núcleos.
+> - Valen las mismas consideraciones sobre la cantidad de núcleos que en [Compilación y ejecución con `make`](#compilación-y-ejecución-con-make): con 64 o 128 procesos, la máquina debe disponer de esa cantidad de núcleos.
 > - Si una ejecución de `make` falla, el script se interrumpe e informa los parámetros que causaron el error.
- 
----
+
 ---
 
-## 9. Limitaciones y posibles mejoras
+## 9. Conclusiones
 
-- **La matriz se genera densa en el proceso 0** antes de comprimirse. Para tamaños muy grandes esto limita el tamaño máximo por la memoria de ese proceso. Una mejora es generar directamente el formato CSC, columna por columna.
-- **El reparto equilibra la cantidad de columnas, no la cantidad de no nulos.** Con no nulos distribuidos uniformemente la carga es parecida, pero si se concentran en pocas columnas algunos procesos trabajarían más. Una alternativa es cortar los bloques de columnas usando `v_columnas` para que cada proceso reciba una cantidad similar de no nulos.
-- **Límites de tipo:** los valores y las filas son `int`, y los punteros de columna son `llint`. Para matrices con más de `2³¹` no nulos habría que revisar también los contadores y los tamaños de las comunicaciones.
+Compartimos el [Google Colab](https://colab.research.google.com/drive/1llNdzPxDA35INzgutv3mbFWu_p9FIR1f#scrollTo=iQkM6Tqp8mc2) de las gráficas, donde utilizamos Python para procesar, limpiar y graficar los datos para su posterior análisis. Las conclusiones que se presentan a continuación se basan en los valores obtenidos en nuestras pruebas.
+
+Los datos de `resultados_paralelo.log` fueron recolectados en una máquina de 128 núcleos con 384 GB de RAM, luego de una exhaustiva ejecución de varias instancias del programa de multiplicación de vector por matriz en su versión paralela.
+
+El análisis del speedup lo separamos en los siguientes escenarios:
+
+> **Nota:** cada uno de estos escenarios fue ejecutado con 1, 8, 16, 64 y 128 núcleos.
+
+### Variación de tamaño de la matriz
+
+En las gráficas podemos observar que, al aumentar el tamaño de la matriz, el speedup es mayor hasta los 64 núcleos, que es donde comienza a desplomarse para todas las matrices.
+
+<p align="center">
+  <img src="img/matrices_pequenias.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices pequeñas">
+  <br>
+  <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
+</p>
+
+<p align="center">
+  <img src="img/matrices_grandes.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices grandes">
+  <br>
+  <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
+</p>
+
+### Matrices rectangulares con variaciones en filas o columnas
+
+Podemos observar que, en ambas gráficas, el speedup de las matrices pequeñas que tienen más columnas es mayor que el de las matrices pequeñas que tienen más filas.
+
+En el caso de las matrices más grandes sucede lo contrario: es mejor el speedup de las matrices con más filas que el de las que tienen más columnas.
+
+Entonces podemos concluir que, para una cantidad `N × M` de datos suficientemente pequeña, es mejor representarla con `N << M`. De la misma forma, para una cantidad suficientemente grande de elementos, es mejor representar la matriz con mayor cantidad de filas, es decir, `N >> M`.
+
+<p align="center">
+  <img src="img/matrices_rectangulares_mas_columnas.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más columnas">
+  <br>
+  <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
+</p>
+
+<p align="center">
+  <img src="img/matrices_rectangulares_mas_filas.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más filas">
+  <br>
+  <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
+</p>
+
+### Variación de densidad en una matriz
+
+Observamos que, al aumentar la densidad de una matriz del mismo tamaño, se vuelve mejor paralelizar. Esto se debe a que aumenta el tiempo de procesamiento, lo que hace que el tiempo de comunicación entre procesos sea relativamente menor.
+
+<p align="center">
+  <img src="img/matrices_varaicon_densidad.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de la variación de densidad en una misma matriz mediana">
+  <br>
+  <em>Matriz de 4096 × 4096 con elementos no nulos menores que 100.</em>
+</p>
+
+### Cantidad de núcleos
+
+Se puede observar que, en general (salvo para las matrices pequeñas), no hay una diferencia destacable entre 16 y 64 núcleos.
+
+En todas las gráficas se puede observar un claro desplome del speedup con 128 núcleos.
+
+En cuanto a los 8 núcleos, usualmente es mejor utilizar 16, pero existen algunas excepciones en las que es mejor utilizar 8.
+
+---
+
+## 10. Limitaciones y posibles mejoras
+
+- **Generación de la matriz.** Si bien no es el problema principal, constituye buena parte del tiempo de ejecución del código. Se nos ocurrieron varias mejoras que se podrían probar:
+    - Generar por separado cada tipo de matriz una única vez, escribirla en un archivo y, en el programa principal, solamente leer ese archivo. Además, se podría intentar paralelizar la lectura.
+    - Generar la matriz directamente en formato CSC.
+    - Paralelizar la generación de la matriz.
+
+- **El reparto equilibra la cantidad de columnas, no la cantidad de no nulos.** Con no nulos distribuidos uniformemente la carga es parecida, pero si se concentran en pocas columnas, algunos procesos trabajarían más. Una alternativa es cortar los bloques de columnas usando `v_columnas` para que cada proceso reciba una cantidad similar de no nulos.
+
+- **Optimización en los casos donde no hay pasos extra.** Nosotros contemplamos el caso donde hay pasos extra, pero si no los hubiese, se podría ahorrar la generación de los arreglos `vdespl_nn` y `vdespl_col`.
+
+---
+
+## 11. Bibliografía
+
+* [Video que explica el almacenamiento de matrices dispersas](https://www.youtube.com/watch?v=kzJ9Ux2xwSI)
+
+* Para realizar este proyecto nos apoyamos en distintos LLM (*Large Language Models*), principalmente en los siguientes aspectos:
+
+    * Revisión de código.
+    * Revisión del informe.
+    * Generación de código: creación del script `benchmark.sh`, el `Dockerfile` y parte del archivo `.ipynb`.
