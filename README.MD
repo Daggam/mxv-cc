@@ -590,13 +590,13 @@ El análisis del speedup lo separamos en los siguientes escenarios:
 En las gráficas podemos observar que, al aumentar el tamaño de la matriz, el speedup es mayor hasta los 64 núcleos, que es donde comienza a desplomarse para todas las matrices.
 
 <p align="center">
-  <img src="img/matrices_pequenias.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices pequeñas">
+  <img src="img/matrices_pequenias.png" alt="Gráficos de tiempo de procesamiento y speedup de matrices pequeñas">
   <br>
   <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
 </p>
 
 <p align="center">
-  <img src="img/matrices_grandes.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices grandes">
+  <img src="img/matrices_grandes.png" alt="Gráficos de tiempo de procesamiento y speedup de matrices grandes">
   <br>
   <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
 </p>
@@ -610,13 +610,13 @@ En el caso de las matrices más grandes sucede lo contrario: es mejor el speedup
 Entonces podemos concluir que, para una cantidad `N × M` de datos suficientemente pequeña, es mejor representarla con `N << M`. De la misma forma, para una cantidad suficientemente grande de elementos, es mejor representar la matriz con mayor cantidad de filas, es decir, `N >> M`.
 
 <p align="center">
-  <img src="img/matrices_rectangulares_mas_columnas.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más columnas">
+  <img src="img/matrices_rectangulares_mas_columnas.png" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más columnas">
   <br>
   <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
 </p>
 
 <p align="center">
-  <img src="img/matrices_rectangulares_mas_filas.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más filas">
+  <img src="img/matrices_rectangulares_mas_filas.png" alt="Gráficos de tiempo de procesamiento y speedup de matrices rectangulares con más filas">
   <br>
   <em>Matrices con una densidad del 30 % y elementos no nulos menores que 100.</em>
 </p>
