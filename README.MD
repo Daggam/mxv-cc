@@ -626,7 +626,7 @@ Entonces podemos concluir que, para una cantidad `N × M` de datos suficientemen
 Observamos que, al aumentar la densidad de una matriz del mismo tamaño, se vuelve mejor paralelizar. Esto se debe a que aumenta el tiempo de procesamiento, lo que hace que el tiempo de comunicación entre procesos sea relativamente menor.
 
 <p align="center">
-  <img src="img/matrices_varaicon_densidad.png" width="600" alt="Gráficos de tiempo de procesamiento y speedup de la variación de densidad en una misma matriz mediana">
+  <img src="img/matrices_varaicon_densidad.png" alt="Gráficos de tiempo de procesamiento y speedup de la variación de densidad en una misma matriz mediana">
   <br>
   <em>Matriz de 4096 × 4096 con elementos no nulos menores que 100.</em>
 </p>
